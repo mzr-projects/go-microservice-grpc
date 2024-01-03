@@ -6,6 +6,7 @@ import (
 	"go-microservice/greet/greetpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"io"
 	"log"
 )
 
@@ -29,6 +30,8 @@ func main() {
 	//fmt.Printf("Created client : %s", c)
 
 	doUnary(err, c)
+
+	doStreaming(err, c)
 }
 
 func doUnary(err error, c greetpb.GreetServiceClient) {
@@ -46,4 +49,36 @@ func doUnary(err error, c greetpb.GreetServiceClient) {
 	}
 
 	log.Printf("Response from greet service: %v", response.Result)
+}
+
+func doStreaming(err error, c greetpb.GreetServiceClient) {
+
+	request := &greetpb.GreetManyTimesRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "James",
+			LastName:  "Corden",
+		},
+	}
+
+	responseStream, err := c.GreetManyTimes(context.Background(), request)
+	if err != nil {
+		log.Fatalf("Error while calling stream rpc %v", err)
+	}
+
+	for {
+		message, err := responseStream.Recv()
+
+		/*
+		 We reached end of the stream
+		*/
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("Error while reading stream %v", err)
+		}
+
+		log.Printf("Response from GreetmanyTimes: %v", message.GetResult())
+	}
 }
